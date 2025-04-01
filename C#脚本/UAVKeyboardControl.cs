@@ -2,24 +2,32 @@ using UnityEngine;
 
 public class UAVKeyboardControl : MonoBehaviour
 {
-    public Transform controlledObject; // 可选择的受控对象，可在Unity编辑器中指定为无人机
     public float baseMoveSpeed = 5f; // 无人机基础移动速度
-    public float rotateSpeed = 100f; // 无人机旋转速度
+    public float baseRotateSpeed = 100f; // 无人机基础旋转速度
     public float minHeight = 5f; // 无人机维持的最小高度
     public float speedMultiplier = 1f; // 速度乘数，用于加速和减速
+    public float rotationSpeedMultiplier = 1f; // 旋转速度乘数，用于加速和减速
     public float accelerationFactor = 1.2f; // 加速因子
     public float decelerationFactor = 0.8f; // 减速因子
     public float targetHeight = 10f; // 设定的目标高度
     public bool heightSettingEnabled = false; // 高度设定功能开关
 
+    // 假设的 GPS 坐标转换函数，需要根据实际情况实现
+    public static Vector3 GPSToUnity(Vector2 gps)
+    {
+        // 这里只是示例，实际需要根据具体的 GPS 坐标系和 Unity 世界坐标系进行转换
+        return new Vector3(gps.x, 0, gps.y);
+    }
+
+    // 假设的 Unity 坐标转换为 GPS 函数，需要根据实际情况实现
+    public static Vector2 UnityToGPS(Vector3 unity)
+    {
+        // 这里只是示例，实际需要根据具体的 GPS 坐标系和 Unity 世界坐标系进行转换
+        return new Vector2(unity.x, unity.z);
+    }
+
     void FixedUpdate()
     {
-        if (controlledObject == null)
-        {
-            Debug.LogError("受控对象未指定，请在Unity编辑器中指定一个Transform对象。");
-            return;
-        }
-
         // 确保无人机高度不低于最小高度
         MaintainHeight();
 
@@ -53,13 +61,17 @@ public class UAVKeyboardControl : MonoBehaviour
 
         // 计算前后移动的向量，使用世界坐标系统
         // vertical 为正（W 键）时向前移动，为负（S 键）时向后移动
-        Vector3 forwardMovement = controlledObject.forward * vertical * currentMoveSpeed * Time.fixedDeltaTime;
+        Vector3 forwardMovement = transform.forward * vertical * currentMoveSpeed * Time.fixedDeltaTime;
         // 计算左右平移的向量，使用世界坐标系统
         // horizontal 为正（D 键）时向右移动，为负（A 键）时向左移动
-        Vector3 horizontalMovement = controlledObject.right * horizontal * currentMoveSpeed * Time.fixedDeltaTime;
+        Vector3 horizontalMovement = transform.right * horizontal * currentMoveSpeed * Time.fixedDeltaTime;
 
         // 应用移动向量到受控对象，使用世界坐标系统
-        controlledObject.Translate(forwardMovement + horizontalMovement, Space.World);
+        transform.Translate(forwardMovement + horizontalMovement, Space.World);
+
+        // 更新 GPS 坐标（这里只是示例，需要根据实际情况实现）
+        Vector2 currentGPS = UnityToGPS(transform.position);
+        // 可以在这里将更新后的 GPS 坐标发送给外部系统
     }
 
     /// <summary>
@@ -67,15 +79,17 @@ public class UAVKeyboardControl : MonoBehaviour
     /// </summary>
     private void HandleRotation()
     {
+        float currentRotateSpeed = baseRotateSpeed * rotationSpeedMultiplier;
+
         // 检测 J 键输入，向左旋转，使用世界坐标系统
         if (Input.GetKey(KeyCode.J))
         {
-            controlledObject.Rotate(Vector3.up, -rotateSpeed * Time.fixedDeltaTime, Space.World);
+            transform.Rotate(Vector3.up, -currentRotateSpeed * Time.fixedDeltaTime, Space.World);
         }
         // 检测 L 键输入，向右旋转，使用世界坐标系统
         if (Input.GetKey(KeyCode.L))
         {
-            controlledObject.Rotate(Vector3.up, rotateSpeed * Time.fixedDeltaTime, Space.World);
+            transform.Rotate(Vector3.up, currentRotateSpeed * Time.fixedDeltaTime, Space.World);
         }
     }
 
@@ -89,12 +103,12 @@ public class UAVKeyboardControl : MonoBehaviour
         // 检测键I，向上移动，使用世界坐标系统
         if (Input.GetKey(KeyCode.I))
         {
-            controlledObject.Translate(Vector3.up * currentMoveSpeed * Time.fixedDeltaTime, Space.World);
+            transform.Translate(Vector3.up * currentMoveSpeed * Time.fixedDeltaTime, Space.World);
         }
         // 检测 K 键输入，向下移动，使用世界坐标系统
         if (Input.GetKey(KeyCode.K))
         {
-            controlledObject.Translate(Vector3.down * currentMoveSpeed * Time.fixedDeltaTime, Space.World);
+            transform.Translate(Vector3.down * currentMoveSpeed * Time.fixedDeltaTime, Space.World);
         }
     }
 
@@ -107,11 +121,13 @@ public class UAVKeyboardControl : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.G))
         {
             speedMultiplier *= accelerationFactor;
+            rotationSpeedMultiplier *= accelerationFactor;
         }
         // 检测 H 键输入，减速
         if (Input.GetKeyDown(KeyCode.H))
         {
             speedMultiplier *= decelerationFactor;
+            rotationSpeedMultiplier *= decelerationFactor;
         }
     }
 
@@ -120,11 +136,11 @@ public class UAVKeyboardControl : MonoBehaviour
     /// </summary>
     private void MaintainHeight()
     {
-        if (controlledObject.position.y < minHeight)
+        if (transform.position.y < minHeight)
         {
             // 如果无人机高度低于最小高度，将其位置调整到最小高度
-            Vector3 newPosition = new Vector3(controlledObject.position.x, minHeight, controlledObject.position.z);
-            controlledObject.position = newPosition;
+            Vector3 newPosition = new Vector3(transform.position.x, minHeight, transform.position.z);
+            transform.position = newPosition;
         }
     }
 
@@ -145,14 +161,14 @@ public class UAVKeyboardControl : MonoBehaviour
     /// </summary>
     private void HandleHeightSetting()
     {
-        float currentHeight = controlledObject.position.y;
+        float currentHeight = transform.position.y;
         float heightDifference = targetHeight - currentHeight;
         float currentMoveSpeed = baseMoveSpeed * speedMultiplier;
 
         if (Mathf.Abs(heightDifference) > 0.1f) // 为了避免微小误差导致的频繁移动
         {
             Vector3 heightMovement = Vector3.up * Mathf.Sign(heightDifference) * currentMoveSpeed * Time.fixedDeltaTime;
-            controlledObject.Translate(heightMovement, Space.World);
+            transform.Translate(heightMovement, Space.World);
         }
     }
 }

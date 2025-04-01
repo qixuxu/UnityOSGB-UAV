@@ -2,55 +2,21 @@ using UnityEngine;
 using System.IO;
 using UnityEngine.UI;
 
-public class DroneCameraClickCaptureinTervalTime : MonoBehaviour
+public class DroneCameraClickCapture : MonoBehaviour
 {
-    public Button startCaptureButton;
-    public Button stopCaptureButton;
+    public Button captureButton;
     public Camera downCamera;
     public Transform droneTransform;
-    public float captureInterval = 2f; // 捕获间隔时间，单位：秒
     private RenderTexture renderTexture;
     private Texture2D screenShot;
-    private float timer;
-    private bool isCapturing = false;
 
     void Start()
     {
-        startCaptureButton.onClick.AddListener(StartCapturing);
-        stopCaptureButton.onClick.AddListener(StopCapturing);
+        captureButton.onClick.AddListener(CaptureAndSaveImage);
 
         // 提前创建 RenderTexture 和 Texture2D 对象，避免频繁创建和销毁
         renderTexture = new RenderTexture(Screen.width, Screen.height, 24);
         screenShot = new Texture2D(Screen.width, Screen.height, TextureFormat.RGB24, false);
-
-        stopCaptureButton.interactable = false;
-    }
-
-    void Update()
-    {
-        if (isCapturing)
-        {
-            timer += Time.deltaTime;
-            if (timer >= captureInterval)
-            {
-                CaptureAndSaveImage();
-                timer = 0f;
-            }
-        }
-    }
-
-    void StartCapturing()
-    {
-        isCapturing = true;
-        startCaptureButton.interactable = false;
-        stopCaptureButton.interactable = true;
-    }
-
-    void StopCapturing()
-    {
-        isCapturing = false;
-        startCaptureButton.interactable = true;
-        stopCaptureButton.interactable = false;
     }
 
     void CaptureAndSaveImage()
